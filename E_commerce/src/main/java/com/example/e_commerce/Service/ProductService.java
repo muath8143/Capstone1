@@ -4,7 +4,7 @@ import com.example.e_commerce.Model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 
 @Service
@@ -12,7 +12,6 @@ import java.util.ArrayList;
 public class ProductService {
     ArrayList<Product> products=new ArrayList<>();
     private final CategoryService categoryService;
-    private final UserService userService;
 
     public ArrayList<Product> getAllProducts(){
         return products;
@@ -55,46 +54,6 @@ public class ProductService {
             }
         }
         return false; // not found id
-    }
-
-    public int addDiscount(String userId,String productId ,int discount, LocalDateTime startDiscount,LocalDateTime endDiscount){
-        if (startDiscount.isBefore(LocalDateTime.now())){
-            return 405; // the start date must be in future
-        }
-        if (endDiscount.isBefore(startDiscount)){
-            return 400; // the start date must be before end date
-        }
-        if (discount<=0){
-            return 401; // the discount must be more than 0
-        }
-        if (discount>=100){
-            return 402; // the discount must be less than 100
-        }
-        for (User user:userService.getAllUsers()){
-            if (user.getId().equals(userId)){
-                if (!user.getRole().equals("Admin")){
-                    return 404; // the role of user not admin
-                }
-                double percentage=discount/100.0;
-                for (Product product:products){
-                    if (product.getId().equals(productId)){
-                        product.setPrice(product.getPrice()-(product.getPrice()*percentage));
-                        return 200;
-                    }
-                }
-                return 406; // not found product id
-            }
-        }
-        return 403; // not found user id
-    }
-    public ArrayList<Product> productsByNameOfCategory(String categoryId){
-        ArrayList<Product> byCategoryId=new ArrayList<>();
-        for (Product product:products){
-            if (product.getCategoryId().equals(categoryId)){
-                byCategoryId.add(product);
-            }
-        }
-        return byCategoryId;
     }
 
     public double getPrice(String productId){

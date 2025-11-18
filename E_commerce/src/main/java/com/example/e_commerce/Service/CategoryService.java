@@ -1,7 +1,6 @@
 package com.example.e_commerce.Service;
 
 import com.example.e_commerce.Model.Category;
-import com.example.e_commerce.Model.Product;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

@@ -145,80 +145,48 @@ public class MerchantStockService {
                                             if (user.getBalance() >= product.getPrice()) {
                                                 user.setBalance(user.getBalance() - product.getPrice());
                                                 merchantStock.setStock(merchantStock.getStock() - 1);
-                                                return 200; // all conditions are met
+                                                return 6; // all conditions are met
                                             }
-                                            return 401; //the user don't have money enough
+                                            return 1; //the user don't have money enough
                                         }
-                                        return 402; // the stock of product less than 1
+                                        return 2; // the stock of product less than 1
                                     }
                                 }
-                                return 403; // not found product in merchant stock
+                                return 3; // not found product in merchant stock
                             }
                         }
-                        return 404; // not found merchant id
+                        return 4; // not found merchant id
                     }
                 }
-                return 405; // not found product id
+                return 5; // not found product id
             }
         }
-        return 400; // not found user id
+        return 0; // not found user id
     }
-    public int replacing (String userId, String oldProductId,String merchantId, String newProductId, LocalDateTime purchaseDate){
-        LocalDateTime oneWeek= LocalDateTime.now().minusWeeks(1);
+
+    public int refund (String userId, String productId,String merchantId){
        if (!findUserId(userId)){
-           return 400; // not found user id
+           return 0; // not found user id
        }
-       if (!findProduct(oldProductId)){
-           return 401; //not found old product to replaced id
+       if (!findProduct(productId)){
+           return 1; //not found product
        }
-       if (!findProduct(newProductId)){
-           return 402; // not found new product id
-       }
-       if (!findMerchantId(merchantId)){
-           return 403; // not found merchant
-       }
-       if (purchaseDate.isAfter(LocalDateTime.now())){
-           return 404; // the purchase date must be in past
-       }
-       if (purchaseDate.isBefore(oneWeek)){
-           return 405; // the purchase date before one week you cannot replace
-       }
-        double oldProductPrice=productService.getPrice(oldProductId);
-        double newProductPrice=productService.getPrice(newProductId);
-        double differenceOldAndNew=Math.abs(oldProductPrice-newProductPrice);
-        for (Merchant merchant:merchantService.getAllMerchants()){
-            if (merchant.getId().equals(merchantId)){
-                for (MerchantStock merchantStock:merchantStocks){
-                    if (merchantStock.getMerchantId().equals(merchantId) && merchantStock.getProductId().equals(newProductId)){
-                        if (merchantStock.getStock()==0){
-                            return 406; // no stock
-                        }
-                        if (oldProductPrice==newProductPrice){
-                            merchantStock.setStock(merchantStock.getStock()-1);
-                            return 200; // success
-                        }
-                        for (User user: userService.getAllUsers()){
-                            if (user.getId().equals(userId)) {
-                                if (oldProductPrice>newProductPrice) {
-                                    user.setBalance(user.getBalance() + differenceOldAndNew);
-                                    merchantStock.setStock(merchantStock.getStock() - 1);
-                                    return 201; // success and add diff to user balance
-                                }
-                                if (oldProductPrice<newProductPrice){
-                                    if (user.getBalance()<differenceOldAndNew){
-                                        return 408; // you don't have money enough
-                                    }
-                                    user.setBalance(user.getBalance()-differenceOldAndNew);
-                                    merchantStock.setStock(merchantStock.getStock()-1);
-                                    return 202; // success and discount diff from user balance
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return 407; // the merchant don't have product
+      for (MerchantStock merchantStock:merchantStocks){
+          if (merchantStock.getProductId().equals(productId)&& merchantStock.getMerchantId().equals(merchantId)){
+              for (User user: userService.getAllUsers()){
+                  if (user.getId().equals(userId)){
+                      for (Product product: productService.getAllProducts()){
+                          if (product.getId().equals(productId)){
+                              user.setBalance(user.getBalance()+product.getPrice());
+                              merchantStock.setStock(merchantStock.getStock()+1);
+                              return 10;
+                          }
+                      }
+                  }
+              }
+          }
+      }
+        return 2; // the merchant don't have product
     }
 
     public ArrayList<Product> getByMerchant(String merchantId){
@@ -238,17 +206,75 @@ public class MerchantStockService {
         }
         return byMerchantId;
     }
-    public ArrayList<MerchantStock> searchMerchantsByProduct(String productId){
-        boolean flag=findProduct(productId);
-        if (!flag){
-            return null;
+
+    public int addDiscount(String merchantId,String productId ,int discount, LocalDateTime startDiscount,LocalDateTime endDiscount){
+        if (startDiscount.isBefore(LocalDateTime.now())){
+            return 0; // the start date must be in future
         }
-        ArrayList<MerchantStock> merchantByProduct=new ArrayList<>();
+        if (endDiscount.isBefore(startDiscount)){
+            return 1; // the start date must be before end date
+        }
+        if (discount<=0){
+            return 2; // the discount must be more than 0
+        }
+        if (discount>=100){
+            return 3; // the discount must be less than 100
+        }
+        if (!findMerchantId(merchantId)){
+            return 6; // not found merchant
+        }
+
+
         for (MerchantStock merchantStock:merchantStocks){
-            if (merchantStock.getProductId().equals(productId)){
-                merchantByProduct.add(merchantStock);
+            if (merchantStock.getMerchantId().equals(merchantId) && merchantStock.getProductId().equals(productId)){
+                double percentage=discount/100.0;
+                for (Product product: productService.getAllProducts()){
+                    if (product.getId().equals(productId)){
+                        product.setPrice(product.getPrice()-(product.getPrice()*percentage));
+                        return 200;
+                    }
+                }
             }
         }
-        return merchantByProduct;
+            return 4; // you don't have this product
+    }
+
+    public boolean findByEmail(String email){
+        for (User user:userService.getAllUsers()){
+            if (user.getEmail().equals(email)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int transferBalance(String userId,String email,double amount){
+        if (amount<=0){
+            return 0; // the amount must be positive
+        }
+        if (!findUserId(userId)){
+            return 1; // not found user id
+        }
+
+        if (!findByEmail(email)){
+            return 3; // not found email
+        }
+
+        for (User user: userService.getAllUsers()){
+            if (user.getId().equals(userId) && user.getEmail().equals(email)){
+                return 4; // cannot transfer to you self
+            }
+            if (user.getId().equals(userId)){
+                if (user.getBalance() < amount) {
+                    return 2; // the balance must be more than amount
+                }
+                user.setBalance(user.getBalance()-amount);
+                continue;
+            }
+            if (user.getEmail().equals(email)){
+                user.setBalance(user.getBalance()+amount);
+            }
+        }
+        return 10;
     }
 }

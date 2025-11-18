@@ -65,35 +65,4 @@ public class ProductController {
         }
         return ResponseEntity.status(400).body(new ApiResponse("The id of product: "+id+" is not exits"));
     }
-
-    @PutMapping("/discount/{userID}/{productId}/{discount}/{startDiscount}/{endDiscount}")
-    public ResponseEntity<?> addDiscount(@PathVariable String userID, @PathVariable String productId, @PathVariable int discount, @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime startDiscount, @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime endDiscount){
-        int flag=productService.addDiscount(userID,productId,discount,startDiscount,endDiscount);
-        switch (flag){
-            case 400: // the start date must be before end date
-                return ResponseEntity.status(400).body(new ApiResponse("The discount start date must be before discount end date"));
-            case 401: // the discount must be more than 0
-                return ResponseEntity.status(400).body(new ApiResponse("The discount must be more than 0"));
-            case 402: // the discount must be less than 100
-                return ResponseEntity.status(400).body(new ApiResponse("The discount must be less than 100"));
-            case 403: // not found user id
-                return ResponseEntity.status(400).body(new ApiResponse("The user id: "+userID+" is not found"));
-            case 404: // the role of user not admin
-                return ResponseEntity.status(400).body(new ApiResponse("Your are not admin you cannot add discount"));
-            case 405: // the start date must be in future
-                return ResponseEntity.status(400).body(new ApiResponse("The discount start date must be in future"));
-            case 406: // not found product id
-                return ResponseEntity.status(400).body(new ApiResponse("The product have id:"+productId+" is not exits"));
-        }
-        return ResponseEntity.status(200).body(new ApiResponse("The discount was successfully applied"));
-    }
-
-    @GetMapping("/get-by-category/{categoryId}")
-    public ResponseEntity<?> productsByCategoryId(@PathVariable String categoryId){
-        ArrayList<Product> byCategoryId=productService.productsByNameOfCategory(categoryId);
-        if (byCategoryId.isEmpty()){
-            return ResponseEntity.status(400).body(new ApiResponse("There are no products in this category"));
-        }
-        return ResponseEntity.status(200).body(byCategoryId);
-    }
 }

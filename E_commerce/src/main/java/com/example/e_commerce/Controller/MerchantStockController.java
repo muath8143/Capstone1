@@ -6,6 +6,7 @@ import com.example.e_commerce.Model.Product;
 import com.example.e_commerce.Service.MerchantStockService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.*;
@@ -98,50 +99,34 @@ public class MerchantStockController {
     public ResponseEntity<?> buyProduct(@PathVariable String userId,@PathVariable String productId,@PathVariable String merchantId){
         int flag=merchantStockService.buyProductDirectly(userId, productId, merchantId);
         switch (flag){
-            case 400: // not found user id
+            case 0: // not found user id
                 return ResponseEntity.status(400).body(new ApiResponse("The user id: "+userId+" is not exits"));
-            case 401: //the user don't have money enough
+            case 1: //the user don't have money enough
                 return ResponseEntity.status(400).body(new ApiResponse("Your balance is insufficient to complete this purchase"));
-            case 402: // the stock of product less than 1
+            case 2: // the stock of product less than 1
                 return ResponseEntity.status(400).body(new ApiResponse("This product is out of stock"));
-            case 403: // not found product in merchant stock
+            case 3: // not found product in merchant stock
                 return ResponseEntity.status(400).body(new ApiResponse("This product does not belong to this merchant"));
-            case 404: // not found merchant id
+            case 4: // not found merchant id
                 return ResponseEntity.status(400).body(new ApiResponse("The merchant id: "+merchantId+" is not exits"));
-            case 405: // not found product id
+            case 5: // not found product id
                 return ResponseEntity.status(400).body(new ApiResponse("The product id: "+productId+" is not exits"));
         }
         return ResponseEntity.status(200).body(new ApiResponse("The purchase was successfully,, Thank you for shopping"));
     }
 
-    @PutMapping("/replacing/{userId}/{oldProductid}/{merchantId}/{newProductId}/{purchaseDate}")
-    public ResponseEntity<?> replacing (@PathVariable String userId, @PathVariable String oldProductid, @PathVariable String merchantId, @PathVariable String newProductId,@PathVariable LocalDateTime purchaseDate){
-        int flag= merchantStockService.replacing(userId, oldProductid, merchantId, newProductId, purchaseDate);
+    @PutMapping("/refund/{userId}/{Productid}/{merchantId}")
+    public ResponseEntity<?> refund (@PathVariable String userId, @PathVariable String Productid, @PathVariable String merchantId){
+        int flag=merchantStockService.refund(userId, Productid, merchantId);
         switch (flag){
-            case 400:
+            case 0:
                 return ResponseEntity.status(400).body(new ApiResponse("The user id: "+userId+" is not exits"));
-            case 401:
-                return ResponseEntity.status(400).body(new ApiResponse("The old product id: "+oldProductid+" is not exits"));
-            case 402:
-                return ResponseEntity.status(400).body(new ApiResponse("The new product id: "+newProductId+" is not exits"));
-            case 403:
-                return ResponseEntity.status(400).body(new ApiResponse("The merchant id: "+merchantId+" is not exits"));
-            case 404:
-                return ResponseEntity.status(400).body(new ApiResponse("the purchase date must be in past"));
-            case 405:
-                return ResponseEntity.status(400).body(new ApiResponse("You have exceeded the allowed replacement period"));
-            case 406:
-                return ResponseEntity.status(400).body(new ApiResponse("The product is out of stock"));
-            case 407:
-                return ResponseEntity.status(400).body(new ApiResponse("This product does not belong to this merchant"));
-            case 408:
-                return ResponseEntity.status(400).body(new ApiResponse("The new product is more expensive than the one you want to exchange and your balance is insufficient"));
-            case 200:
-                return ResponseEntity.status(200).body(new ApiResponse("The product was successfully replaced"));
-            case 201:
-                return ResponseEntity.status(200).body(new ApiResponse("The replacement was successful The new product is cheaper and the price difference has been added to your balance"));
+            case 1:
+                return ResponseEntity.status(400).body(new ApiResponse("The product id: "+Productid+" is not exits"));
+            case 2:
+                return ResponseEntity.status(400).body(new ApiResponse("the merchant don't have product"));
         }
-        return ResponseEntity.status(200).body(new ApiResponse("The replacement was successful The new product is more expensive and the price difference has been deducted from your balance"));
+        return ResponseEntity.status(200).body(new ApiResponse("The refund was successful"));
     }
 
     @GetMapping("/get-by-merchant-id/{merchantId}")
@@ -155,16 +140,42 @@ public class MerchantStockController {
         }
         return ResponseEntity.status(200).body(byMerchantId);
     }
+    @PutMapping("/discount/{merchantId}/{productId}/{discount}/{startDiscount}/{endDiscount}")
+    public ResponseEntity<?> addDiscount(@PathVariable String merchantId, @PathVariable String productId, @PathVariable int discount,
+                                         @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime startDiscount, @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime endDiscount){
+        int flag=merchantStockService.addDiscount(merchantId,productId,discount,startDiscount,endDiscount);
+        switch (flag){
+            case 1: // the start date must be before end date
+                return ResponseEntity.status(400).body(new ApiResponse("The discount start date must be before discount end date"));
+            case 2: // the discount must be more than 0
+                return ResponseEntity.status(400).body(new ApiResponse("The discount must be more than 0"));
+            case 3: // the discount must be less than 100
+                return ResponseEntity.status(400).body(new ApiResponse("The discount must be less than 100"));
+            case 6: // not found merchant
+                return ResponseEntity.status(400).body(new ApiResponse("you are not merchant"));
+            case 4: // the role of user not admin
+                return ResponseEntity.status(400).body(new ApiResponse( "you don't have this product"));
+            case 0: // the start date must be in future
+                return ResponseEntity.status(400).body(new ApiResponse("The discount start date must be in future"));
+        }
+        return ResponseEntity.status(200).body(new ApiResponse("The discount was successfully applied"));
+    }
 
-    @GetMapping("/merchant-by-product/{productId}")
-    public ResponseEntity<?> merchantsByproductId(@PathVariable String productId){
-        ArrayList<MerchantStock> merchantByproduct=merchantStockService.searchMerchantsByProduct(productId);
-        if (merchantByproduct==null){
-            return ResponseEntity.status(400).body(new ApiResponse("The product id: "+productId+" is not exits"));
+    @PutMapping("/transfer/{userid}/{email}/{amount}")
+    public ResponseEntity<?> transferAmount(@PathVariable String userid,@PathVariable String email,@PathVariable double amount){
+        int flag = merchantStockService.transferBalance(userid, email, amount);
+        switch (flag){
+            case 0:
+                return ResponseEntity.status(400).body(new ApiResponse("The amount must be greater than 0"));
+            case 1:
+                return ResponseEntity.status(400).body(new ApiResponse("The user id: "+userid+" is not exists"));
+            case 2:
+                return ResponseEntity.status(400).body(new ApiResponse("your balance is less than the transfer amount"));
+            case 3:
+                return ResponseEntity.status(400).body(new ApiResponse("The email: "+email+" is not exists"));
+            case 4:
+                return ResponseEntity.status(400).body(new ApiResponse("You cannot transfer to yourself"));
         }
-        if (merchantByproduct.isEmpty()){
-            return ResponseEntity.status(400).body(new ApiResponse("There are No merchants selling this product"));
-        }
-        return ResponseEntity.status(200).body(merchantByproduct);
+        return ResponseEntity.status(200).body(new ApiResponse("The transfer was successful"));
     }
 }
